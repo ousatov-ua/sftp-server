@@ -23,14 +23,18 @@ import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.sftp.server.SftpSubsystemFactory;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Simple SFTP server for testing.
+ * Simple in-memory SFTP server for testing. Accepts all credentials.
  *
  * @author Oleksii Usatov
  * @since 20.02.2026
  */
-public class SftpServer {
+public class SftpServer implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SftpServer.class);
 
   private static final SimpleFileVisitor<Path> DELETE_FILES_AND_DIRECTORIES =
       new SimpleFileVisitor<>() {
@@ -48,15 +52,23 @@ public class SftpServer {
           if (dir.getParent() != null) {
             Files.delete(dir);
           }
-
           return super.postVisitDirectory(dir, exc);
         }
       };
+
   private final SshServer server;
   private final FileSystem fileSystem;
+  private boolean started;
 
-  public SftpServer(int port) throws IOException {
-    fileSystem = MemoryFileSystemBuilder.newLinux().build("FakeSftpServerRule@" + this.hashCode());
+  /**
+   * Package-private constructor allowing a custom {@link FileSystem} (supports DIP).
+   *
+   * @param port the port to listen on (0 for OS-assigned)
+   * @param fileSystem the backing filesystem
+   * @throws IOException if the SSH server cannot be configured
+   */
+  SftpServer(int port, FileSystem fileSystem) throws IOException {
+    this.fileSystem = fileSystem;
     server = SshServer.setUpDefaultServer();
     server.setPort(port);
     server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
@@ -65,37 +77,184 @@ public class SftpServer {
     server.setFileSystemFactory(
         new FileSystemFactory() {
           @Override
-          public Path getUserHomeDir(SessionContext session) throws IOException {
-            return fileSystem.getPath("/"); // or whichever root/home path you want
+          public Path getUserHomeDir(SessionContext session) {
+            return fileSystem.getPath("/");
           }
 
           @Override
-          public FileSystem createFileSystem(SessionContext session) throws IOException {
+          public FileSystem createFileSystem(SessionContext session) {
             return new DoNotClose(fileSystem);
           }
         });
   }
 
+  /**
+   * Creates an SFTP server with a Linux in-memory filesystem.
+   *
+   * @param port the port to listen on (0 for OS-assigned)
+   * @throws IOException if the filesystem or SSH server cannot be initialised
+   */
+  public SftpServer(int port) throws IOException {
+    this(port, MemoryFileSystemBuilder.newLinux().build("FakeSftpServer@" + System.nanoTime()));
+  }
+
+  /**
+   * @return the port the server is bound to; must be called after {@link #start()}
+   */
   public int getPortFromServer() {
     this.verifyThatTestIsRunning("call getPort()");
     return this.server.getPort();
   }
 
+  /**
+   * Starts the SSH/SFTP server.
+   *
+   * @throws IOException if the server cannot bind to the port
+   */
   public void start() throws IOException {
     server.start();
+    started = true;
+    LOGGER.info("SFTP server started on port {}", server.getPort());
   }
 
+  /**
+   * Stops the SSH server without closing the underlying filesystem.
+   *
+   * @throws IOException if the server cannot be stopped
+   */
   public void stop() throws IOException {
     server.stop();
+    started = false;
+    LOGGER.info("SFTP server stopped");
   }
 
+  /**
+   * Stops the server and releases the underlying filesystem.
+   *
+   * @throws IOException if stop or filesystem close fails
+   */
+  @Override
+  public void close() throws IOException {
+    server.stop();
+    fileSystem.close();
+    LOGGER.info("SFTP server closed");
+  }
+
+  /**
+   * Puts a file at the given path with text content.
+   *
+   * @param path target path
+   * @param content text content
+   * @param encoding character encoding
+   * @throws IOException if the write fails
+   */
   public void putFile(String path, String content, Charset encoding) throws IOException {
     byte[] contentAsBytes = content.getBytes(encoding);
     this.putFile(path, contentAsBytes);
   }
 
+  /**
+   * Puts a file at the given path with raw byte content.
+   *
+   * @param path target path
+   * @param content raw bytes
+   * @throws IOException if the write fails
+   */
+  public void putFile(String path, byte[] content) throws IOException {
+    Path pathAsObject = this.preparePath(path);
+    Files.write(pathAsObject, content);
+  }
+
+  /**
+   * Puts a file at the given path by copying from an input stream.
+   *
+   * @param path target path
+   * @param is source stream
+   * @throws IOException if the copy fails
+   */
+  public void putFile(String path, InputStream is) throws IOException {
+    Path pathAsObject = this.preparePath(path);
+    Files.copy(is, pathAsObject);
+  }
+
+  /**
+   * Creates a single directory, including any missing parents.
+   *
+   * @param path directory path
+   * @throws IOException if creation fails
+   */
+  public void createDirectory(String path) throws IOException {
+    this.verifyThatTestIsRunning("create directory");
+    LOGGER.debug("Creating directory: {}", path);
+    Path pathAsObject = this.fileSystem.getPath(path);
+    Files.createDirectories(pathAsObject);
+  }
+
+  /**
+   * Creates multiple directories.
+   *
+   * @param paths directory paths
+   * @throws IOException if any creation fails
+   */
+  public void createDirectories(String... paths) throws IOException {
+    for (String path : paths) {
+      this.createDirectory(path);
+    }
+  }
+
+  /**
+   * Returns the text content of a file.
+   *
+   * @param path file path
+   * @param encoding character encoding
+   * @return decoded file content
+   * @throws IOException if the read fails
+   */
+  public String getFileContent(String path, Charset encoding) throws IOException {
+    byte[] content = this.getFileContent(path);
+    return new String(content, encoding);
+  }
+
+  /**
+   * Returns the raw byte content of a file.
+   *
+   * @param path file path
+   * @return file bytes
+   * @throws IOException if the read fails
+   */
+  public byte[] getFileContent(String path) throws IOException {
+    this.verifyThatTestIsRunning("download file");
+    Path pathAsObject = this.fileSystem.getPath(path);
+    return Files.readAllBytes(pathAsObject);
+  }
+
+  /**
+   * Returns {@code true} if a regular file (not a directory) exists at the given path.
+   *
+   * @param path path to check
+   * @return {@code true} if a file exists, {@code false} otherwise
+   */
+  public boolean existsFile(String path) {
+    this.verifyThatTestIsRunning("check existence of file");
+    Path pathAsObject = this.fileSystem.getPath(path);
+    return Files.exists(pathAsObject) && !Files.isDirectory(pathAsObject);
+  }
+
+  /**
+   * Deletes all files and directories, leaving the filesystem root intact.
+   *
+   * @throws IOException if deletion fails
+   */
+  public void deleteAllFilesAndDirectories() throws IOException {
+    this.verifyThatTestIsRunning("delete all files and directories");
+    LOGGER.debug("Deleting all files and directories");
+    for (Path directory : this.fileSystem.getRootDirectories()) {
+      Files.walkFileTree(directory, DELETE_FILES_AND_DIRECTORIES);
+    }
+  }
+
   private void verifyThatTestIsRunning(String mode) {
-    if (this.fileSystem == null) {
+    if (!started) {
       throw new IllegalStateException(
           "Failed to " + mode + " because test has not been started or is already finished.");
     }
@@ -108,56 +267,23 @@ public class SftpServer {
     }
   }
 
-  public void putFile(String path, byte[] content) throws IOException {
+  /**
+   * Resolves a string path and ensures its parent directory exists.
+   *
+   * @param path the target file path
+   * @return the resolved {@link Path}
+   * @throws IOException if parent directory creation fails
+   */
+  private Path preparePath(String path) throws IOException {
     this.verifyThatTestIsRunning("upload file");
+    LOGGER.debug("Putting file: {}", path);
     Path pathAsObject = this.fileSystem.getPath(path);
     this.ensureDirectoryOfPathExists(pathAsObject);
-    Files.write(pathAsObject, content);
-  }
-
-  public void putFile(String path, InputStream is) throws IOException {
-    this.verifyThatTestIsRunning("upload file");
-    Path pathAsObject = this.fileSystem.getPath(path);
-    this.ensureDirectoryOfPathExists(pathAsObject);
-    Files.copy(is, pathAsObject);
-  }
-
-  public void createDirectory(String path) throws IOException {
-    this.verifyThatTestIsRunning("create directory");
-    Path pathAsObject = this.fileSystem.getPath(path);
-    Files.createDirectories(pathAsObject);
-  }
-
-  public void createDirectories(String... paths) throws IOException {
-    for (String path : paths) {
-      this.createDirectory(path);
-    }
-  }
-
-  public String getFileContent(String path, Charset encoding) throws IOException {
-    byte[] content = this.getFileContent(path);
-    return new String(content, encoding);
-  }
-
-  public byte[] getFileContent(String path) throws IOException {
-    this.verifyThatTestIsRunning("download file");
-    Path pathAsObject = this.fileSystem.getPath(path);
-    return Files.readAllBytes(pathAsObject);
-  }
-
-  public boolean existsFile(String path) {
-    this.verifyThatTestIsRunning("check existence of file");
-    Path pathAsObject = this.fileSystem.getPath(path);
-    return Files.exists(pathAsObject) && !Files.isDirectory(pathAsObject);
-  }
-
-  public void deleteAllFilesAndDirectories() throws IOException {
-    for (Path directory : this.fileSystem.getRootDirectories()) {
-      Files.walkFileTree(directory, DELETE_FILES_AND_DIRECTORIES);
-    }
+    return pathAsObject;
   }
 
   private static class DoNotClose extends FileSystem {
+
     final FileSystem fileSystem;
 
     DoNotClose(FileSystem fileSystem) {
@@ -169,8 +295,7 @@ public class SftpServer {
     }
 
     public void close() {
-
-      // Do nothing
+      // Do nothing — prevents SSHD from closing the shared filesystem
     }
 
     public boolean isOpen() {

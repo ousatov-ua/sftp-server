@@ -11,7 +11,7 @@
 
   <name>Sftp server</name>
   <description>Sftp server for test purposes</description>
-  <url>https://github.com/yourname/your-library</url>
+  <url>https://github.com/ousatov-ua/sftp-server</url>
 
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
@@ -22,6 +22,8 @@
     <spotless.version>3.3.0</spotless.version>
     <org.specify.version>1.0.0</org.specify.version>
     <google.java.format.version>1.34.1</google.java.format.version>
+    <junit.version>5.11.4</junit.version>
+    <slf4j.version>1.7.36</slf4j.version>
   </properties>
 
   <licenses>
@@ -47,6 +49,11 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.sshd</groupId>
       <artifactId>sshd-core</artifactId>
       <version>${sshd.version}</version>
@@ -60,6 +67,18 @@
       <groupId>com.github.marschall</groupId>
       <artifactId>memoryfilesystem</artifactId>
       <version>${memoryfilesystem.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>test</scope>
     </dependency>
 
   </dependencies>
@@ -81,8 +100,8 @@
         <configuration>
           <java>
             <includes>
-              <include>src/main/java/org/olus/testing/sftp/**/*.java</include>
-              <include>src/test/**/*.java</include>
+              <include>src/main/java/**</include>
+              <include>src/test/java/**</include>
             </includes>
 
             <!-- Google Java Format -->
@@ -102,6 +121,13 @@
         </configuration>
       </plugin>
 
+      <!-- JUnit 5 test runner -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+      </plugin>
+
       <!-- Sources JAR (required) -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -110,7 +136,9 @@
         <executions>
           <execution>
             <id>attach-sources</id>
-            <goals><goal>jar-no-fork</goal></goals>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -123,7 +151,9 @@
         <executions>
           <execution>
             <id>attach-javadocs</id>
-            <goals><goal>jar</goal></goals>
+            <goals>
+              <goal>jar</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -137,7 +167,9 @@
           <execution>
             <id>sign-artifacts</id>
             <phase>verify</phase>
-            <goals><goal>sign</goal></goals>
+            <goals>
+              <goal>sign</goal>
+            </goals>
           </execution>
         </executions>
         <configuration>
