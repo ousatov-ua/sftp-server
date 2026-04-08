@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
  * Simple in-memory SFTP server for testing. Accepts all credentials.
  *
  * @author Oleksii Usatov
- * @since 20.02.2026
  */
 public class SftpServer implements AutoCloseable {
 
@@ -92,7 +91,7 @@ public class SftpServer implements AutoCloseable {
    * Creates an SFTP server with a Linux in-memory filesystem.
    *
    * @param port the port to listen on (0 for OS-assigned)
-   * @throws IOException if the filesystem or SSH server cannot be initialised
+   * @throws IOException if the filesystem or SSH server cannot be initialized
    */
   public SftpServer(int port) throws IOException {
     this(port, MemoryFileSystemBuilder.newLinux().build("FakeSftpServer@" + System.nanoTime()));
@@ -122,6 +121,7 @@ public class SftpServer implements AutoCloseable {
    *
    * @throws IOException if the server cannot be stopped
    */
+  @SuppressWarnings("unused")
   public void stop() throws IOException {
     server.stop();
     started = false;
@@ -146,7 +146,7 @@ public class SftpServer implements AutoCloseable {
    * @param path target path
    * @param content text content
    * @param encoding character encoding
-   * @throws IOException if the write fails
+   * @throws IOException if the writing fails
    */
   public void putFile(String path, String content, Charset encoding) throws IOException {
     byte[] contentAsBytes = content.getBytes(encoding);
@@ -158,7 +158,7 @@ public class SftpServer implements AutoCloseable {
    *
    * @param path target path
    * @param content raw bytes
-   * @throws IOException if the write fails
+   * @throws IOException if the writing fails
    */
   public void putFile(String path, byte[] content) throws IOException {
     Path pathAsObject = this.preparePath(path);
