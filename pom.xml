@@ -7,6 +7,11 @@
   <groupId>io.github.ousatov.test.sftp</groupId>
   <artifactId>sftp-server</artifactId>
   <version>1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>Sftp server</name>
+  <description>Sftp server for test purposes</description>
+  <url>https://github.com/yourname/your-library</url>
 
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
@@ -25,6 +30,14 @@
       <url>https://opensource.org/licenses/MIT</url>
     </license>
   </licenses>
+
+  <developers>
+    <developer>
+      <id>ousatov-ua</id>
+      <name>Oleksii Usatov</name>
+      <email>oleksii.usatov@proton.me</email>
+    </developer>
+  </developers>
 
   <dependencies>
     <dependency>
@@ -89,6 +102,72 @@
         </configuration>
       </plugin>
 
+      <!-- Sources JAR (required) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals><goal>jar-no-fork</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Javadoc JAR (required) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.10.1</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals><goal>jar</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- GPG signing (required) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>3.2.7</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals><goal>sign</goal></goals>
+          </execution>
+        </executions>
+        <configuration>
+          <!-- Prevent GPG from opening a UI prompt in CI -->
+          <gpgArguments>
+            <arg>--pinentry-mode</arg>
+            <arg>loopback</arg>
+          </gpgArguments>
+        </configuration>
+      </plugin>
+
+      <!-- Sonatype Central publisher -->
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.7.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
+          <waitUntil>published</waitUntil>
+        </configuration>
+      </plugin>
+
     </plugins>
   </build>
+
+  <scm>
+    <connection>scm:git:git://github.com/ousatov-ua/sftp-server.git</connection>
+    <developerConnection>scm:git:ssh://github.com/ousatov-ua//sftp-server.git</developerConnection>
+    <url>https://github.com/ousatov-ua/sftp-server/tree/main</url>
+  </scm>
 </project>
