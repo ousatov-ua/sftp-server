@@ -168,7 +168,7 @@ client.stop();
 
 | Component | Version  |
 |-----------|----------|
-| Java | 25+      |
+| Java | 21+      |
 | Apache SSHD | 3.0.0-M2 |
 | SLF4J API | 1.7.36   |
 
