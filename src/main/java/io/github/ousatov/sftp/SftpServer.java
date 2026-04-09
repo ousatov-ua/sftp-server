@@ -1,4 +1,4 @@
-package io.github.ousatov.test.sftp;
+package io.github.ousatov.sftp;
 
 import com.github.marschall.memoryfilesystem.MemoryFileSystemBuilder;
 import java.io.IOException;

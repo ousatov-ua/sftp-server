@@ -1,4 +1,4 @@
-package io.github.ousatov.test.sftp;
+package io.github.ousatov.sftp;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
