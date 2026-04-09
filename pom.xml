@@ -14,8 +14,8 @@
   <url>https://github.com/ousatov-ua/sftp-server</url>
 
   <properties>
-    <maven.compiler.source>21</maven.compiler.source>
-    <maven.compiler.target>21</maven.compiler.target>
+    <maven.compiler.source>25</maven.compiler.source>
+    <maven.compiler.target>25</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sshd.version>3.0.0-M2</sshd.version>
     <memoryfilesystem.version>2.8.2</memoryfilesystem.version>

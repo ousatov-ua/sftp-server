@@ -163,11 +163,11 @@ client.stop();
 
 ## Requirements
 
-| Component | Version |
-|-----------|---------|
-| Java | 21+ |
+| Component | Version  |
+|-----------|----------|
+| Java | 25+      |
 | Apache SSHD | 3.0.0-M2 |
-| SLF4J API | 1.7.36 |
+| SLF4J API | 1.7.36   |
 
 ---
 
