@@ -11,6 +11,9 @@ A lightweight, zero-config **in-memory SFTP server** for use in JUnit tests. No 
 open ports left behind — just a real SFTP server that lives entirely in RAM and vanishes when your
 test finishes.
 
+Java 21 (sftp-server < 3.0.0), Java 25 (sft-server >= 3.0.0)
+
+
 ---
 
 ## Why use it?
